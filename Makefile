@@ -3,7 +3,7 @@ default: main
 main: main.c
 	gcc -o main -static main.c
 
-.PHONY: clean docker run
+.PHONY: clean docker run console
 clean:
 	rm -f main
 	rm -rf m5out
@@ -13,3 +13,6 @@ docker:
 
 run:
 	~/repos/registergem5/build/ARM/gem5.opt ~/repos/registergem5/configs/regcpu.py $(realpath main)
+
+console:
+	docker run -it -v $$(pwd):/mnt reg_bld_ctr bash
