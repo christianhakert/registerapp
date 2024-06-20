@@ -1,7 +1,7 @@
 default: main
 
 main: main.c
-	gcc -o main -static main.c
+	aarch64-linux-gnu-gcc -o main -static main.c
 
 .PHONY: clean docker run console
 clean:
