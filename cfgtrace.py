@@ -5,6 +5,8 @@ import sys
 import re
 import os
 
+import racetrack
+
 filename = sys.argv[1]
 
 text_start = 0
@@ -141,6 +143,7 @@ class BasicBlock:
         self.instructions=[]
         self.jmp_targets=[]
         self.jr_targets=[]
+        self.link_targets=[]
         self.to_map()
 
     def populate_block(self):
@@ -167,10 +170,12 @@ class BasicBlock:
             if self.instructions[-1].is_linked_branch():
                 #add the return address as a jr target
                 link_address=label_to_address(self.instructions[-1].address+"+4")
+                # print("Linked branch at "+self.instructions[-1].address+" to "+label_to_address(self.instructions[-1].branch_target())+" with link address "+link_address)
                 if link_address not in address_bb_map:
                     jblock=BasicBlock(link_address)
                     # jblock.populate_block()
                     populate_list.append(jblock)
+                self.link_targets.append(link_address)
                 
                 if target_addr != None and is_in_text(target_addr):
                     address_bb_map[target_addr].push_jr_target(link_address)
@@ -181,6 +186,7 @@ class BasicBlock:
         address_bb_map[self.start_address]=self
 
     def push_jr_target(self, jr_target):
+        # print("pushing jr target "+jr_target+" to "+self.start_address)
         #Only cash the target here
         if jr_target not in self.jr_targets:
             self.jr_targets.append(jr_target)
@@ -193,11 +199,16 @@ class BasicBlock:
             #Already called this note, cycles are not needed
             return
         if not self.instructions[-1].is_return():
-            #A return consumes jr targets, if we do not end with a return, push through
+            #A return consumes jr targets, if we do not end with a return, push through, to all jump targets and to all link targets
             visitlist.append(self)
             for jmp_target in self.jmp_targets:
                 # Do not push through to other jumps
                 if address_bb_map[jmp_target].instructions[-1].is_linked_branch():
+                    #A link will overvwrite the return addresses, therefore no push. The link address, will consume the return
+                    for link_target in address_bb_map[jmp_target].link_targets:
+                        for jr_target in self.jr_targets:
+                            address_bb_map[link_target].push_jr_target(jr_target)
+                        address_bb_map[link_target].finalize_jr_targets(visitlist)
                     continue
                 #Move all jr targets to the lower blocks
                 if address_bb_map[jmp_target] not in visitlist:
@@ -226,11 +237,14 @@ class BasicBlock:
 
 bb_m=BasicBlock("main")
 populate_list=[bb_m]
+print("Populating basic blocks")
 while len(populate_list) > 0:
     populate_list.pop(0).populate_block()
+print("Finalizing jr targets")
 for bb in address_bb_map:
     address_bb_map[bb].finalize_jr_targets()
 
+print("Writing dotfile")
 bb_m.populate_dotfile()
 
 dotfile=open("cfg.dot","w")
@@ -241,3 +255,93 @@ dotfile.write("}")
 dotfile.close()
 
 os.system("dot -Tpdf cfg.dot -o cfg.pdf")
+
+print("Done with CFG")
+
+#Output first and last instuction address of main in a seperate file
+mainfile=open("main.txt","w")
+mainfile.write(bb_m.start_address+"\n")
+
+#Get the last insztruction from main from readelf
+result=subprocess.check_output("readelf -s "+filename+" | grep main", shell=True)
+result = result.decode("utf-8")
+result=result.replace("\t"," ")
+linematch=re.search("[^:]: [0-9a-f]* *([0-9]*) [A-Za-z0-9 ]* main\n",result)
+main_len=int(linematch.group(1))
+main_last_address=int(bb_m.start_address,16)+main_len-4
+mainfile.write(hex(main_last_address)+"\n")
+
+mainfile.close()
+
+#Now provide the RT mapping recommendations
+
+def racetrack_stats(bb,iidx):
+    #Create the possible paths
+    paths=[[(bb,iidx)]]
+    full_paths=[]
+
+    total_v1_rating=0
+    total_v2_rating=0
+
+    #Enumerate all paths with defined length
+    while len(paths) > 0:
+        path=paths.pop(0)
+        #Fill up until end of basic block
+        nextidx=path[-1][1]+1
+        mybb=path[-1][0]
+        while nextidx < len(mybb.instructions) and len(path) < racetrack.execution_window:
+            path.append((path[-1][0],nextidx))
+            nextidx+=1
+        #Check if we aborted due to full window
+        if len(path) == racetrack.execution_window:
+            full_paths.append(path)
+            continue
+        #We are at the end of the block, spawn all possible continuations
+        for jmp_target in mybb.jmp_targets:
+            if jmp_target in address_bb_map:
+                #Ecldue cycle
+                if address_bb_map[jmp_target] in [x[0] for x in path]:
+                    full_paths.append(path)
+                    continue
+                paths.append(path+[(address_bb_map[jmp_target],0)])
+        for jr_target in mybb.jr_targets:
+            if jr_target in address_bb_map:
+                #Ecldue cycle
+                if address_bb_map[jr_target] in [x[0] for x in path]:
+                    full_paths.append(path)
+                    continue
+                paths.append(path+[(address_bb_map[jr_target],0)])
+        #If there is no continuation, this is a full path
+        if len(bb.jmp_targets) == 0 and len(mybb.jr_targets) == 0:
+            full_paths.append(path)
+
+    #Now evaluate the rating for all paths
+    for path in full_paths:
+        #Reset the racetrack
+        racetrack.reset()
+        for bb,iidx in path:
+            isn=bb.instructions[iidx]
+            for src in isn.src_regs:
+                if src.find("x") == 0 or src.find("w") == 0:
+                    racetrack.next_access( int(src.replace("x","").replace("w","")) )
+            for dst in isn.dst_regs:
+                if dst.find("x") == 0 or dst.find("w") == 0:
+                    racetrack.next_access( int(dst.replace("x","").replace("w","")) )
+
+        v1,v2=racetrack.get_version_counters()
+        total_v1_rating+=v1
+        total_v2_rating+=v2
+    return total_v1_rating, total_v2_rating
+
+rtstatfile=open("rtstats.csv","w")
+rtstatfile.write("Address,V1,V2\n")
+
+#Iterate over all instructions and write a statistics table
+for bb in address_bb_map:
+    for iidx in range(0,len(address_bb_map[bb].instructions)):
+        v1,v2=racetrack_stats(address_bb_map[bb],iidx)
+        rtstatfile.write(address_bb_map[bb].instructions[iidx].address+","+str(v1)+","+str(v2)+"\n")
+        
+rtstatfile.close()
+
+print(racetrack_stats(bb_m,0))
