@@ -21,7 +21,7 @@ for line in rstatsfile:
             skip_first_line=False
             continue
         parts=line.split(",")
-        recmap[int(parts[0],16)] = 1 if parts[1]<parts[2] else 2
+        recmap[int(parts[0],16)] = 1 if int(parts[1])<int(parts[2]) else 2
 rstatsfile.close()
 
 #Now irerare over the trace until the first address is reached
@@ -39,6 +39,8 @@ v1_total_shifts=0
 v2_total_shifts=0
 opt_total_shifts=0
 recommended_total_shifts=0
+
+last_rec=1
 
 for line in tracefile:
     line=line.strip()
@@ -68,6 +70,9 @@ for line in tracefile:
         dr3=int(parts[15])
         disassembly=parts[16]
 
+        if instr_address not in recmap:
+            continue
+
         if instr_address==first_address:
             evaluate=True
             print("First address reached, disassembly: "+disassembly)
@@ -90,11 +95,13 @@ for line in tracefile:
             #Write block statistics to results file
             resultfile.write(hex(curr_blk_start)+","+str(v1_counter)+","+str(v2_counter))
             if curr_blk_start in recmap:
+                last_rec=recmap[curr_blk_start]
                 resultfile.write(","+str(recmap[curr_blk_start]))
                 recommended_total_shifts+=v1_counter if recmap[curr_blk_start]==1 else v2_counter
             else:
                 resultfile.write(",0")
-                recommended_total_shifts+=v2_counter
+                # recommended_total_shifts+=v2_counter
+                recommended_total_shifts+=v1_counter if last_rec==1 else v2_counter
             resultfile.write("\n")
 
             resultfile.flush()

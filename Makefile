@@ -1,7 +1,13 @@
 default: main
 
+NUM_REGS := 34
+
+REG_EXCLUDE_LIST := $(shell for i in $$(seq $(NUM_REGS) 63); do echo -n "-ffixed-$$i "; done)
+REG_EXCLUDE_LIST := 
+
 main: main.c
-	aarch64-linux-gnu-gcc -o main -static main.c
+	@echo $(REG_EXCLUDE_LIST)
+	aarch64-linux-gnu-gcc -O0 $(REG_EXCLUDE_LIST) -o main -static main.c
 
 .PHONY: clean docker run console
 clean:

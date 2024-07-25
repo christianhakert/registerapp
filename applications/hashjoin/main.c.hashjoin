@@ -1,0 +1,132 @@
+// #include <stdio.h>
+
+typedef struct HashTable {
+    long   numEntries;
+    unsigned int entrySize;
+    unsigned int keyOffset;
+    long int*    data;
+} HashTable;
+
+#define HT_EMPTY 0xffffffffffffffff
+#define HASH_MAX 0x7fffffffffffffff
+
+unsigned long relation_1[3000];
+unsigned long relation_2[2000];
+unsigned long outrel[10000];
+HashTable sht;
+
+unsigned long end_mark;
+
+
+typedef unsigned long size_t;
+typedef long int Data;
+
+unsigned char storage_pool[(1024*1024)];
+unsigned long alloc_offset=0;
+
+void *aligned_alloc(unsigned long alignment, unsigned long size){
+    alloc_offset=(alloc_offset+alignment-1)&~(alignment-1);
+    void *ptr=&storage_pool[alloc_offset];
+    alloc_offset+=size;
+    return ptr;
+}
+
+static HashTable* populateHashTable (HashTable* ht, size_t minSize, int keyOffset, int entrySize ) {
+    size_t size = 1;
+    while ( size < minSize ) {
+        size <<= 1;
+        size += 1;
+    }
+
+    ht->numEntries = size;
+    ht->entrySize  = entrySize;
+    ht->keyOffset  = keyOffset;
+
+    ht->data = (long int*) aligned_alloc ( 64, ht->numEntries * ht->entrySize * sizeof ( long int ) );
+
+    for ( size_t i=0; i < ht->numEntries; i++ ) {
+        size_t loc = i * ht->entrySize + ht->keyOffset;
+        ht->data [ loc ] = HT_EMPTY; 
+    }
+}
+
+int main(){
+    populateHashTable(&sht, 1000, 0, 1);
+    asm volatile(
+        "nop;"
+        "bl hashjoin;"
+    );
+}
+
+typedef unsigned long uint64_t;
+
+uint64_t h ( uint64_t key )
+{
+    key += ~(key << 32);
+    key ^= (key >> 22);
+    key += ~(key << 13);
+    key ^= (key >> 8);
+    key += (key << 3);
+    key ^= (key >> 15);
+    key += ~(key << 27);
+    key ^= (key >> 31);
+    return key & (HASH_MAX);
+}
+
+
+// returns pointer to the storage for materialization
+long int* ht_put ( HashTable* ht, long int key ) {
+
+    // get first location 
+    long int hash = h ( key );
+    long loc = hash & ht->numEntries; 
+    long nProbes = 0;
+
+    // linear probing
+    while ( nProbes < ht->numEntries ) {
+        if ( (unsigned long) ht->data [ loc * ht->entrySize + ht->keyOffset ] == HT_EMPTY ) {
+            return &ht->data[ (loc * ht->entrySize) ];
+        }
+        loc++;
+        loc &= ht->numEntries;
+        nProbes++;
+    }
+    return 0;
+}
+
+Data* ht_get ( HashTable* ht, Data key, Data* loc ) {
+    
+    // get new position or next position
+    if ( loc == 0 ) {
+    
+        // new probe
+        uint64_t pos = h ( key ) & ht->numEntries;
+        loc = &ht->data [ pos * ht->entrySize ]; 
+
+    } else {
+
+        // subsequent (linear) probe
+        loc += ht->entrySize;
+    }
+
+    // linear probing
+    Data htKey = loc [ ht->keyOffset ];
+        
+    while ( (uint64_t) htKey != HT_EMPTY ) {
+            
+
+        // check key
+        if ( htKey == key ) {
+            return loc;
+        }
+        
+        // go to next entry
+        loc += ht->entrySize;
+        if ( loc > ( ht->data + ( ht->entrySize * ht->numEntries ) ) ) {
+            loc = ht->data;
+        }
+
+        htKey = loc [ ht->keyOffset ];
+    } 
+    return 0;
+}

@@ -60,6 +60,7 @@ class Instruction:
     mnemonic = ""
     src_regs=[]
     dst_regs=[]
+    recommendation_miss=0
 
     def __init__(self, addr):
         self.address = addr
@@ -121,7 +122,10 @@ class Instruction:
         return re.search("st", self.mnemonic) != None
     
     def __str__(self):
-        return self.disassembly+" s "+str(self.src_regs)+" d "+str(self.dst_regs)
+        labeltext=self.disassembly+" s "+str(self.src_regs)+" d "+str(self.dst_regs)+" m "+str(self.recommendation_miss)
+        if self.recommendation_miss > 0:
+            labeltext="**"+labeltext+"**"
+        return labeltext
 
 address_bb_map = {}
 dotfile_map = {}
@@ -244,17 +248,17 @@ print("Finalizing jr targets")
 for bb in address_bb_map:
     address_bb_map[bb].finalize_jr_targets()
 
-print("Writing dotfile")
-bb_m.populate_dotfile()
+# print("Writing dotfile")
+# bb_m.populate_dotfile()
 
-dotfile=open("cfg.dot","w")
-dotfile.write("digraph G {\n")
-for addr in dotfile_map:
-    dotfile.write(dotfile_map[addr])
-dotfile.write("}")
-dotfile.close()
+# dotfile=open("cfg.dot","w")
+# dotfile.write("digraph G {\n")
+# for addr in dotfile_map:
+#     dotfile.write(dotfile_map[addr])
+# dotfile.write("}")
+# dotfile.close()
 
-os.system("dot -Tpdf cfg.dot -o cfg.pdf")
+# os.system("dot -Tpdf cfg.dot -o cfg.pdf")
 
 print("Done with CFG")
 
@@ -336,11 +340,49 @@ def racetrack_stats(bb,iidx):
 rtstatfile=open("rtstats.csv","w")
 rtstatfile.write("Address,V1,V2\n")
 
+missmap=None
+
+#Check if a shiftresults.csv file exists
+if os.path.exists("shiftresults.csv"):
+    missmap={}
+    #read the recommendations file and build a map
+    rstatsfile=open("shiftresults.csv","r")
+    skip_first_line=True
+    for line in rstatsfile:
+        line=line.strip()
+        if line:
+            if skip_first_line:
+                skip_first_line=False
+                continue
+            parts=line.split(",")
+            #Check if the address is in the miss map already
+            prev_val=0
+            if int(parts[0],16) in missmap:
+                prev_val=missmap[int(parts[0],16)]
+            missmap[int(parts[0],16)] = prev_val+(1 if int(parts[1])<int(parts[2]) and int(parts[3])==2 else 0)
+
 #Iterate over all instructions and write a statistics table
 for bb in address_bb_map:
     for iidx in range(0,len(address_bb_map[bb].instructions)):
         v1,v2=racetrack_stats(address_bb_map[bb],iidx)
         rtstatfile.write(address_bb_map[bb].instructions[iidx].address+","+str(v1)+","+str(v2)+"\n")
+        if missmap != None:
+            if int(address_bb_map[bb].instructions[iidx].address,16) in missmap:
+                print("Found recommendation for "+address_bb_map[bb].instructions[iidx].address+" with "+str(missmap[int(address_bb_map[bb].instructions[iidx].address,16)]))
+                address_bb_map[bb].instructions[iidx].recommendation_miss=missmap[int(address_bb_map[bb].instructions[iidx].address,16)]
+
+#Draw CFG
+print("Writing dotfile")
+bb_m.populate_dotfile()
+
+dotfile=open("cfg.dot","w")
+dotfile.write("digraph G {\n")
+for addr in dotfile_map:
+    dotfile.write(dotfile_map[addr])
+dotfile.write("}")
+dotfile.close()
+
+os.system("dot -Tpdf cfg.dot -o cfg.pdf")
         
 rtstatfile.close()
 
