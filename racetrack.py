@@ -1,4 +1,6 @@
-execution_window=100
+import racetrack_params
+
+execution_window=racetrack_params.execution_window
 
 last_reg=0
 
@@ -7,7 +9,7 @@ v2_counter=0
 
 rt_energy=0
 
-num_access_ports=2
+num_access_ports=racetrack_params.nap
 
 def reset():
     global last_reg
@@ -26,15 +28,14 @@ def next_access(next_reg):
     global v1_counter
     global v2_counter
     
-    #V1: Each register is a nanotrack
-    v1_counter+=int((64*2)/num_access_ports)
-    # v1_counter+=32
-    #V2 each register is a position in all nanotracks
-    # v2_counter+=(64*abs(next_reg-last_reg))
-    # v2_counter+=int(abs(next_reg-last_reg)/num_access_ports)*64
-    v2_counter+=abs( int(2*next_reg/(num_access_ports)) - int(2*last_reg/(num_access_ports))  )*64
+    #V1: horizontal allocation
+    v1_counter+=int( (64/num_access_ports) -1 )*2
+    #V2 vertical allocation
+    v2_counter+= abs( int( (next_reg*64) / (racetrack_params.N*num_access_ports) )- int( (last_reg*64) / (racetrack_params.N*num_access_ports) ) )*racetrack_params.N
 
     last_reg=next_reg
+
+    #update energy and latency?
 
 def read_raceteack_reg(reg_nr):
     global rt_energy

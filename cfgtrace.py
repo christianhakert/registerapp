@@ -346,7 +346,7 @@ missmap=None
 if os.path.exists("shiftresults.csv"):
     missmap={}
     #read the recommendations file and build a map
-    rstatsfile=open("shiftresults.csv","r")
+    rstatsfile=open(filename+"shiftresults.csv","r")
     skip_first_line=True
     for line in rstatsfile:
         line=line.strip()

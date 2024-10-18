@@ -1,5 +1,9 @@
 import racetrack
 
+#get runname as input
+import sys
+
+runname=sys.argv[1]
 
 recmap={}
 
@@ -25,7 +29,7 @@ for line in rstatsfile:
 rstatsfile.close()
 
 #Now irerare over the trace until the first address is reached
-tracefile=open("regtrace.csv","r")
+tracefile=open(runname+".csv","r")
 
 resultfile=open("shiftresults.csv","w")
 
@@ -89,10 +93,10 @@ for line in tracefile:
 
         if instr_address==first_address:
             evaluate=True
-            print("First address reached, disassembly: "+disassembly)
+            # print("First address reached, disassembly: "+disassembly)
 
         if instr_address==max_address:
-            print("Last address reached, stopping")
+            # print("Last address reached, stopping")
             break
 
         if evaluate==False:
@@ -124,7 +128,7 @@ for line in tracefile:
             curr_blk_start=instr_address
             curr_blk_len=0
 
-            print(str(v1_total_shifts)+","+str(v2_total_shifts)+","+str(opt_total_shifts)+","+str(recommended_total_shifts)+ ","+str(racetrack.get_energy()))
+            # print(str(v1_total_shifts)+","+str(v2_total_shifts)+","+str(opt_total_shifts)+","+str(recommended_total_shifts)+ ","+str(racetrack.get_energy()))
         
         curr_blk_len+=1
         if type_sr1==" integer" and sr1 < 32:
@@ -158,13 +162,22 @@ for line in tracefile:
 #When the file is ended, write the last block statistics
 
 v1_counter,v2_counter=racetrack.get_version_counters()
+
+v1_total_shifts+=v1_counter
+v2_total_shifts+=v2_counter
+opt_total_shifts+=min(v1_counter,v2_counter)
+
 resultfile.write(hex(curr_blk_start)+","+str(v1_counter)+","+str(v2_counter))
 if curr_blk_start in recmap:
     resultfile.write(","+str(recmap[curr_blk_start]))
+    recommended_total_shifts+=v1_counter if recmap[curr_blk_start]==1 else v2_counter
 else:
     resultfile.write(",0")
+    recommended_total_shifts+=v1_counter if last_rec==1 else v2_counter
 resultfile.write("\n")
         
 tracefile.close()
 
 resultfile.close()
+
+print(str(v1_total_shifts)+","+str(v2_total_shifts)+","+str(opt_total_shifts)+","+str(recommended_total_shifts)+ ","+str(racetrack.get_energy()))

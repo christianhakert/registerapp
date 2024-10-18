@@ -1,114 +1,47 @@
 #include "data.h"
-// #include <stdio.h>
 
-typedef unsigned long uint64_t;
-typedef long int64_t;
+typedef unsigned char uint8_t;
 
-void print_system(double **system, double *right, uint64_t range);
+void quick_sort(uint8_t *begin, uint8_t *end);
 
-void solve_system(double **system, double *right, uint64_t range);
+void main() {
+    unsigned int sort_size = 8000;
 
-int main() {
-    double local_system[RANGE][RANGE];
-
-    double *system_ptr[RANGE];
-    for (uint64_t i = 0; i < RANGE; i++) {
-        system_ptr[i] = local_system[i];
-    }
-
-    // print_system(system_ptr, right, RANGE);
-    for (unsigned long i = 0; i < 150; i++) {
-        for (unsigned long x = 0; x < RANGE; x++) {
-            for (unsigned long y = 0; y < RANGE; y++) {
-                local_system[x][y] = system[x][y];
-            }
-        }
-        // printf("DOne copy\n");
-        solve_system(system_ptr, right, RANGE);
-    }
-
-    // print_system(system_ptr, right, RANGE);
+    quick_sort(random_number, random_number + sort_size);
 }
 
-void substract_lines(double **system, double *right, uint64_t target,
-                     uint64_t src, double fac, uint64_t range) {
-    double *target_line = system[target];
-    double *src_line = system[src];
-    for (uint64_t i = 0; i < range; i++) {
-        target_line[i] -= src_line[i] * fac;
+void quick_sort(unsigned char *begin, unsigned char *end) {
+    // printf("Beginning of qsort\n");
+    if (begin + 2 >= end) {
+        return;
     }
-    right[target] -= right[src] * fac;
-}
+    unsigned char *pivot_element = end - 1;
 
-void swap_lines(double **system, double *right, uint64_t target, uint64_t src,
-                uint64_t range) {
-    double *target_line = system[target];
-    double *src_line = system[src];
-    for (uint64_t i = 0; i < range; i++) {
-        double acc = target_line[i];
-        target_line[i] = src_line[i];
-        src_line[i] = acc;
-    }
-    double acc = right[target];
-    right[target] = right[src];
-    right[src] = acc;
-}
+    unsigned char *li = begin;
+    unsigned char *ri = end - 1;
 
-void solve_system(double **system, double *right, uint64_t range) {
-    // Outer loop over range
-    for (uint64_t range_reduce = 0; range_reduce < range; range_reduce++) {
-        // First check if line can be used to reduce
-        if (system[range_reduce][range_reduce] == 0) {
-            for (uint64_t left_over = range_reduce + 1; left_over < range;
-                 left_over++) {
-                if (system[left_over][range_reduce] != 0) {
-                    swap_lines(system, right, range_reduce, left_over, range);
-                    break;
-                }
-            }
-            if (system[range_reduce][range_reduce] == 0) {
-                // printf("System is not solvable\n");
-                return;
-            }
-        }
+    // printf("Resorting loop\n");
+    while (li < ri) {
+        while (li < end - 2 && *li < *pivot_element) li++;
+        while (ri > begin && *ri >= *pivot_element) ri--;
 
-        // Now eliminate the current column everywhere
-        for (uint64_t left_over = range_reduce + 1; left_over < range;
-             left_over++) {
-            double reduce_fac = system[left_over][range_reduce] /
-                                system[range_reduce][range_reduce];
-            substract_lines(system, right, left_over, range_reduce, reduce_fac,
-                            range);
+        if (li < ri) {
+            unsigned char buffer = *li;
+            *li = *ri;
+            *ri = buffer;
         }
     }
 
-    // Now insert solved variables and eliminate them all
-    for (int64_t left_line = range - 1; left_line >= 0; left_line--) {
-        // Insert variables first
-        for (int64_t i = left_line + 1; i < (int64_t)range; i++) {
-            right[left_line] -= system[left_line][i] * right[i];
-            system[left_line][i] = 0;
-        }
+    // printf("Resorting loop end\n");
 
-        right[left_line] /= system[left_line][left_line];
-        system[left_line][left_line] = 1;
+    if (*li > *pivot_element) {
+        unsigned char buffer = *li;
+        *li = *pivot_element;
+        *pivot_element = buffer;
     }
-}
 
-// void print_system(double **system, double *right, uint64_t range) {
-//     printf("Printing equation system:\n");
-//     for (uint64_t y = 0; y < range; y++) {
-//         for (uint64_t x = 0; x < range; x++) {
-//             if (system[y][x] > 0.00001 || system[y][x] < -0.00001) {
-//                 if (system[y][x] == 1) {
-//                 } else if (system[y][x] == -1) {
-//                     printf("-");
-//                 } else {
-//                     printf("%f ", system[y][x]);
-//                 }
-//                 printf("x %d\t", x);
-//             }
-//         }
-//         printf("=\t %f\n", right[y]);
-//     }
-// }
+    // printf("LCalling qsort at 0x%lx\n", quick_sort);
+    quick_sort(begin, li);
+    // printf("RCalling qsort at 0x%lx\n", quick_sort);
+    quick_sort(li + 1, end);
+}
