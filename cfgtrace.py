@@ -18,7 +18,7 @@ def is_in_text(addr):
     global text_end
 
     if text_start == 0 and text_end == 0:
-        result=subprocess.check_output("size -x -A "+filename+" | grep .text", shell=True)
+        result=subprocess.check_output("aarch64-linux-gnu-size -x -A "+filename+" | grep .text", shell=True)
         result = result.decode("utf-8")
         linematch=re.findall("0x[0-9a-f]*",result)
         start=linematch[0]
@@ -33,7 +33,7 @@ def is_in_text(addr):
 def query_gdb(sect):
     result = ""
     try:
-        result = subprocess.check_output("gdb -batch -ex 'disas "+sect+",+1' "+filename, shell=True)
+        result = subprocess.check_output("gdb-multiarch -batch -ex 'disas "+sect+",+1' "+filename, shell=True)
     except subprocess.CalledProcessError as e:
         return None
     #convert result to string
@@ -267,7 +267,7 @@ mainfile=open("main.txt","w")
 mainfile.write(bb_m.start_address+"\n")
 
 #Get the last insztruction from main from readelf
-result=subprocess.check_output("readelf -s "+filename+" | grep main", shell=True)
+result=subprocess.check_output("aarch64-linux-gnu-readelf -s "+filename+" | grep main", shell=True)
 result = result.decode("utf-8")
 result=result.replace("\t"," ")
 linematch=re.search("[^:]: [0-9a-f]* *([0-9]*) [A-Za-z0-9 ]* main\n",result)

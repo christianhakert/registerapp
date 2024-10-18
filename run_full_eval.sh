@@ -88,7 +88,7 @@ for window_size in 10 100 200 500;do
 
                         echo "Launching new analysis with $file with window size $window_size, $num_nanotracks nanotracks, $nanotrack_length nanotrack length and $number_access_ports access ports"
 
-                        sem -j 2 parallel_process $my_par_id $window_size $num_nanotracks $nanotrack_length $number_access_ports $file
+                        sem -j 30 parallel_process $my_par_id $window_size $num_nanotracks $nanotrack_length $number_access_ports $file
                     fi
                 fi
             done
