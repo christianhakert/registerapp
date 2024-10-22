@@ -25,7 +25,7 @@ for line in rstatsfile:
             skip_first_line=False
             continue
         parts=line.split(",")
-        recmap[int(parts[0],16)] = 1 if int(parts[1])<int(parts[2]) else 2
+        recmap[int(parts[0],16)] = 1 if float(parts[1])<float(parts[2]) else 2
 rstatsfile.close()
 
 #Now irerare over the trace until the first address is reached

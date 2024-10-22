@@ -36,15 +36,16 @@ parallel_process() {
     resline=$(python3 eval_trace.py $file)
     echo "$window_size,$num_nanotracks,$nanotrack_length,$number_access_ports,$file,$resline" > lresults.csv
     mv rtstats.csv static_rtstats.csv
+    mv shiftresults.csv static_shift_results.csv
 
     #generate probability distribution
     python3 record_branch_probabilities.py $file
     #move away old shift results
-    mv shift_results.csv static_shift_results.csv
+    python3 cfgtrace.py $file
 
     resline=$(python3 eval_trace.py $file)
     echo "$window_size,$num_nanotracks,$nanotrack_length,$number_access_ports,prob_$file,$resline" >> lresults.csv
-    mv shift_results.csv prob_shift_results.csv
+    mv shiftresults.csv prob_shift_results.csv
     mv rtstats.csv prob_rtstats.csv
 }
 
@@ -96,6 +97,7 @@ for window_size in 10 100 200 500;do
                         cp cfgtrace.py parrun/$my_par_id/.
                         cp eval_trace.py parrun/$my_par_id/.
                         cp racetrack.py parrun/$my_par_id/.
+                        cp record_branch_probabilities.py parrun/$my_par_id/.
 
                         echo "Launching new analysis with $file with window size $window_size, $num_nanotracks nanotracks, $nanotrack_length nanotrack length and $number_access_ports access ports"
 
