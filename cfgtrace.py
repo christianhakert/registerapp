@@ -279,9 +279,16 @@ mainfile.close()
 
 #Now provide the RT mapping recommendations
 
+#Check if we have branch_targets
+branch_targets=None
+if os.path.exists("branch_targets.p"):
+    print("Loading branch targets")
+    import pickle
+    branch_targets=pickle.load(open("branch_targets.p", "rb"))
+
 def racetrack_stats(bb,iidx):
     #Create the possible paths
-    paths=[[(bb,iidx)]]
+    paths=[[(bb,iidx,1)]]
     full_paths=[]
 
     total_v1_rating=0
@@ -293,8 +300,9 @@ def racetrack_stats(bb,iidx):
         #Fill up until end of basic block
         nextidx=path[-1][1]+1
         mybb=path[-1][0]
+        currentprob=path[-1][2]
         while nextidx < len(mybb.instructions) and len(path) < racetrack.execution_window:
-            path.append((path[-1][0],nextidx))
+            path.append((path[-1][0],nextidx,currentprob))
             nextidx+=1
         #Check if we aborted due to full window
         if len(path) == racetrack.execution_window:
@@ -307,14 +315,22 @@ def racetrack_stats(bb,iidx):
                 if address_bb_map[jmp_target] in [x[0] for x in path]:
                     full_paths.append(path)
                     continue
-                paths.append(path+[(address_bb_map[jmp_target],0)])
+                #Check the probability
+                bprob=1
+                if branch_targets != None:
+                    bsource=int(mybb.instructions[-1].address,16)
+                    btarget=int(jmp_target,16)
+                    if bsource in branch_targets:
+                        if btarget in branch_targets[bsource]:
+                            bprob=branch_targets[bsource][btarget]
+                paths.append(path+[(address_bb_map[jmp_target],0,currentprob*bprob)])
         for jr_target in mybb.jr_targets:
             if jr_target in address_bb_map:
                 #Ecldue cycle
                 if address_bb_map[jr_target] in [x[0] for x in path]:
                     full_paths.append(path)
                     continue
-                paths.append(path+[(address_bb_map[jr_target],0)])
+                paths.append(path+[(address_bb_map[jr_target],0,currentprob)])
         #If there is no continuation, this is a full path
         if len(bb.jmp_targets) == 0 and len(mybb.jr_targets) == 0:
             full_paths.append(path)
@@ -322,8 +338,9 @@ def racetrack_stats(bb,iidx):
     #Now evaluate the rating for all paths
     for path in full_paths:
         #Reset the racetrack
+        pathprob=path[-1][2]
         racetrack.reset()
-        for bb,iidx in path:
+        for bb,iidx,prob in path:
             isn=bb.instructions[iidx]
             for src in isn.src_regs:
                 if src.find("x") == 0 or src.find("w") == 0:
@@ -333,8 +350,8 @@ def racetrack_stats(bb,iidx):
                     racetrack.next_access( int(dst.replace("x","").replace("w","")) )
 
         v1,v2=racetrack.get_version_counters()
-        total_v1_rating+=v1
-        total_v2_rating+=v2
+        total_v1_rating+=v1*pathprob
+        total_v2_rating+=v2*pathprob
     return total_v1_rating, total_v2_rating
 
 rtstatfile=open("rtstats.csv","w")
@@ -346,7 +363,7 @@ missmap=None
 if os.path.exists("shiftresults.csv"):
     missmap={}
     #read the recommendations file and build a map
-    rstatsfile=open(filename+"shiftresults.csv","r")
+    rstatsfile=open("shiftresults.csv","r")
     skip_first_line=True
     for line in rstatsfile:
         line=line.strip()
