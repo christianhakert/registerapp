@@ -35,6 +35,17 @@ parallel_process() {
     echo "$echopfx Evaluating trace"
     resline=$(python3 eval_trace.py $file)
     echo "$window_size,$num_nanotracks,$nanotrack_length,$number_access_ports,$file,$resline" > lresults.csv
+    mv rtstats.csv static_rtstats.csv
+
+    #generate probability distribution
+    python3 record_branch_probabilities.py $file
+    #move away old shift results
+    mv shift_results.csv static_shift_results.csv
+
+    resline=$(python3 eval_trace.py $file)
+    echo "$window_size,$num_nanotracks,$nanotrack_length,$number_access_ports,prob_$file,$resline" >> lresults.csv
+    mv shift_results.csv prob_shift_results.csv
+    mv rtstats.csv prob_rtstats.csv
 }
 
 export -f parallel_process
