@@ -19,6 +19,12 @@ def reset():
     v1_counter=0
     v2_counter=0
 
+    #simulate store and restore overhead, basically one shift of all nanotracks to the next access head
+    migrate_ov=((racetrack_params.B/racetrack_params.num_access_ports)-1)*racetrack_params.N*2
+    v1_counter+=migrate_ov
+    v2_counter+=migrate_ov
+
+
 def get_version_counters():
     return v1_counter, v2_counter
 
