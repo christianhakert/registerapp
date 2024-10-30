@@ -2,7 +2,7 @@
 
 #iterate over window sizes
 
-echo "window_size,num_tracks,track_length,num_aps,benchmark,v1_total_shifts,v2_total_shifts,opt_total_shifts,recommended_total_shifts,total_energy" > results.csv
+echo "window_size,num_tracks,track_length,num_aps,benchmark,v1_total_shifts,v2_total_shifts,opt_total_shifts,recommended_total_shifts,v1_total_energy,v2_total_energy,opt_total_energy,recommended_total_energy,v1_total_latency,v2_total_latency,opt_total_latency,recommended_total_latency" > results.csv
 
 rm -Rf parrun
 mkdir parrun
@@ -51,7 +51,7 @@ parallel_process() {
 
 export -f parallel_process
 
-for window_size in 10 100 200 500;do
+for window_size in 10 100 1000 2000;do
 # for window_size in 100;do
     # echo "Window size: $window_size"
     for ntp in $(seq 0 11);do
@@ -102,6 +102,7 @@ for window_size in 10 100 200 500;do
                         echo "Launching new analysis with $file with window size $window_size, $num_nanotracks nanotracks, $nanotrack_length nanotrack length and $number_access_ports access ports"
 
                         sem -j 30 parallel_process $my_par_id $window_size $num_nanotracks $nanotrack_length $number_access_ports $file
+                        # parallel_process $my_par_id $window_size $num_nanotracks $nanotrack_length $number_access_ports $file
                     fi
                 fi
             done

@@ -49,7 +49,15 @@ v2_total_energy=0
 opt_total_energy=0
 recommended_total_energy=0
 
+v1_total_latency=0
+v2_total_latency=0
+opt_total_latency=0
+recommended_total_latency=0
+
 last_rec=1
+
+last_alloc="V1"
+last_opt_alloc="V1"
 
 for line in tracefile:
     line=line.strip()
@@ -107,10 +115,14 @@ for line in tracefile:
         if evaluate==False:
             continue
 
+        new_alloc=None
+        new_opt_alloc=None
+
         if curr_blk_len==racetrack.execution_window:
             #get the results from racetrack versions
             v1_counter,v2_counter=racetrack.get_version_counters()
             v1_en_counter,v2_en_counter=racetrack.get_total_energy()
+            v1_lt_counter,v2_lt_counter=racetrack.get_total_latency()
 
             v1_total_shifts+=v1_counter
             v2_total_shifts+=v2_counter
@@ -120,6 +132,22 @@ for line in tracefile:
             v2_total_energy+=v2_en_counter
             opt_total_energy+=v1_en_counter if v1_counter<v2_counter else v2_en_counter
 
+            v1_total_latency+=v1_lt_counter
+            v2_total_latency+=v2_lt_counter
+            opt_total_latency+=v1_lt_counter if v1_counter<v2_counter else v2_lt_counter
+
+            new_opt_alloc="V1" if v1_counter<v2_counter else "V2"
+
+            migrate_shifts,migrate_energy,migrate_latency=racetrack.get_migration_counters()
+            recommended_total_shifts+=migrate_shifts
+            recommended_total_energy+=migrate_energy
+            recommended_total_latency+=migrate_latency
+
+            migrate_opt_shifts,migrate_opt_energy,migrate_opt_latency=racetrack.get_migration_opt_counters()
+            opt_total_shifts+=migrate_opt_shifts
+            opt_total_energy+=migrate_opt_energy
+            opt_total_latency+=migrate_opt_latency
+
             #Write block statistics to results file
             resultfile.write(hex(curr_blk_start)+","+str(v1_counter)+","+str(v2_counter))
             if curr_blk_start in recmap:
@@ -127,16 +155,22 @@ for line in tracefile:
                 resultfile.write(","+str(recmap[curr_blk_start]))
                 recommended_total_shifts+=v1_counter if recmap[curr_blk_start]==1 else v2_counter
                 recommended_total_energy+=v1_en_counter if recmap[curr_blk_start]==1 else v2_en_counter
+                recommended_total_latency+=v1_lt_counter if recmap[curr_blk_start]==1 else v2_lt_counter
+                new_alloc="V1" if recmap[curr_blk_start]==1 else "V2"
             else:
                 resultfile.write(",0")
                 # recommended_total_shifts+=v2_counter
                 recommended_total_shifts+=v1_counter if last_rec==1 else v2_counter
                 recommended_total_energy+=v1_en_counter if last_rec==1 else v2_en_counter
+                recommended_total_latency+=v1_lt_counter if last_rec==1 else v2_lt_counter
+                new_alloc="V1" if last_rec==1 else "V2"
             resultfile.write("\n")
 
             resultfile.flush()
             #reset the counters
-            racetrack.reset()
+            racetrack.reset(last_alloc,new_alloc,last_opt_alloc,new_opt_alloc)
+            last_alloc=new_alloc
+            last_opt_alloc=new_opt_alloc
             curr_blk_start=instr_address
             curr_blk_len=0
 
@@ -184,19 +218,35 @@ v1_total_energy+=v1_en_counter
 v2_total_energy+=v2_en_counter
 opt_total_energy+=v1_en_counter if v1_counter<v2_counter else v2_en_counter
 
+v1_total_latency+=v1_lt_counter
+v2_total_latency+=v2_lt_counter
+opt_total_latency+=v1_lt_counter if v1_counter<v2_counter else v2_lt_counter
+
+migrate_shifts,migrate_energy,migrate_latency=racetrack.get_migration_counters()
+recommended_total_shifts+=migrate_shifts
+recommended_total_energy+=migrate_energy
+recommended_total_latency+=migrate_latency
+
+migrate_opt_shifts,migrate_opt_energy,migrate_opt_latency=racetrack.get_migration_opt_counters()
+opt_total_shifts+=migrate_opt_shifts
+opt_total_energy+=migrate_opt_energy
+opt_total_latency+=migrate_opt_latency
+
 resultfile.write(hex(curr_blk_start)+","+str(v1_counter)+","+str(v2_counter))
 if curr_blk_start in recmap:
     resultfile.write(","+str(recmap[curr_blk_start]))
     recommended_total_shifts+=v1_counter if recmap[curr_blk_start]==1 else v2_counter
     recommended_total_energy+=v1_en_counter if recmap[curr_blk_start]==1 else v2_en_counter
+    recommended_total_latency+=v1_lt_counter if recmap[curr_blk_start]==1 else v2_lt_counter
 else:
     resultfile.write(",0")
     recommended_total_shifts+=v1_counter if last_rec==1 else v2_counter
     recommended_total_energy+=v1_en_counter if last_rec==1 else v2_en_counter
+    recommended_total_latency+=v1_lt_counter if last_rec==1 else v2_lt_counter
 resultfile.write("\n")
         
 tracefile.close()
 
 resultfile.close()
 
-print(str(v1_total_shifts)+","+str(v2_total_shifts)+","+str(opt_total_shifts)+","+str(recommended_total_shifts)+ ","+str(v1_total_energy)+","+str(v2_total_energy)+","+str(opt_total_energy)+","+str(recommended_total_energy))
+print(str(v1_total_shifts)+","+str(v2_total_shifts)+","+str(opt_total_shifts)+","+str(recommended_total_shifts)+ ","+str(v1_total_energy)+","+str(v2_total_energy)+","+str(opt_total_energy)+","+str(recommended_total_energy)+","+str(v1_total_latency)+","+str(v2_total_latency)+","+str(opt_total_latency)+","+str(recommended_total_latency))
