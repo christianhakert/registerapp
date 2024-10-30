@@ -44,6 +44,11 @@ v2_total_shifts=0
 opt_total_shifts=0
 recommended_total_shifts=0
 
+v1_total_energy=0
+v2_total_energy=0
+opt_total_energy=0
+recommended_total_energy=0
+
 last_rec=1
 
 for line in tracefile:
@@ -105,10 +110,15 @@ for line in tracefile:
         if curr_blk_len==racetrack.execution_window:
             #get the results from racetrack versions
             v1_counter,v2_counter=racetrack.get_version_counters()
+            v1_en_counter,v2_en_counter=racetrack.get_total_energy()
 
             v1_total_shifts+=v1_counter
             v2_total_shifts+=v2_counter
             opt_total_shifts+=min(v1_counter,v2_counter)
+
+            v1_total_energy+=v1_en_counter
+            v2_total_energy+=v2_en_counter
+            opt_total_energy+=v1_en_counter if v1_counter<v2_counter else v2_en_counter
 
             #Write block statistics to results file
             resultfile.write(hex(curr_blk_start)+","+str(v1_counter)+","+str(v2_counter))
@@ -116,10 +126,12 @@ for line in tracefile:
                 last_rec=recmap[curr_blk_start]
                 resultfile.write(","+str(recmap[curr_blk_start]))
                 recommended_total_shifts+=v1_counter if recmap[curr_blk_start]==1 else v2_counter
+                recommended_total_energy+=v1_en_counter if recmap[curr_blk_start]==1 else v2_en_counter
             else:
                 resultfile.write(",0")
                 # recommended_total_shifts+=v2_counter
                 recommended_total_shifts+=v1_counter if last_rec==1 else v2_counter
+                recommended_total_energy+=v1_en_counter if last_rec==1 else v2_en_counter
             resultfile.write("\n")
 
             resultfile.flush()
@@ -162,22 +174,29 @@ for line in tracefile:
 #When the file is ended, write the last block statistics
 
 v1_counter,v2_counter=racetrack.get_version_counters()
+v1_en_counter,v2_en_counter=racetrack.get_total_energy()
 
 v1_total_shifts+=v1_counter
 v2_total_shifts+=v2_counter
 opt_total_shifts+=min(v1_counter,v2_counter)
 
+v1_total_energy+=v1_en_counter
+v2_total_energy+=v2_en_counter
+opt_total_energy+=v1_en_counter if v1_counter<v2_counter else v2_en_counter
+
 resultfile.write(hex(curr_blk_start)+","+str(v1_counter)+","+str(v2_counter))
 if curr_blk_start in recmap:
     resultfile.write(","+str(recmap[curr_blk_start]))
     recommended_total_shifts+=v1_counter if recmap[curr_blk_start]==1 else v2_counter
+    recommended_total_energy+=v1_en_counter if recmap[curr_blk_start]==1 else v2_en_counter
 else:
     resultfile.write(",0")
     recommended_total_shifts+=v1_counter if last_rec==1 else v2_counter
+    recommended_total_energy+=v1_en_counter if last_rec==1 else v2_en_counter
 resultfile.write("\n")
         
 tracefile.close()
 
 resultfile.close()
 
-print(str(v1_total_shifts)+","+str(v2_total_shifts)+","+str(opt_total_shifts)+","+str(recommended_total_shifts)+ ","+str(racetrack.get_energy()))
+print(str(v1_total_shifts)+","+str(v2_total_shifts)+","+str(opt_total_shifts)+","+str(recommended_total_shifts)+ ","+str(v1_total_energy)+","+str(v2_total_energy)+","+str(opt_total_energy)+","+str(recommended_total_energy))
