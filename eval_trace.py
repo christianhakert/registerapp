@@ -209,6 +209,7 @@ for line in tracefile:
 
 v1_counter,v2_counter=racetrack.get_version_counters()
 v1_en_counter,v2_en_counter=racetrack.get_total_energy()
+v1_lt_counter,v2_lt_counter=racetrack.get_total_latency()
 
 v1_total_shifts+=v1_counter
 v2_total_shifts+=v2_counter
