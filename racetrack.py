@@ -96,7 +96,7 @@ def reset(migrate_from="V1",migrate_to="V2",migrate_opt_from="V1",migrate_opt_to
     #simulate restore of registers
     prev_reg=0
     for i in range(Numregs):
-        tmp_v1_counter,tmp_v2_counter=next_access(i,local_last_reg=prev_reg,add_to_global=False)
+        tmp_v1_counter,tmp_v2_counter=next_access(i,local_last_reg=prev_reg,add_to_global=False, is_write=True)
         tmp_v1_energy,tmp_v2_energy,tmp_v1_latency,tmp_v2_latency=write_raceteack_reg(i,old_value=0x00000000,new_value=0xFFFFFFFF,add_to_global=False)
         if migrate_to=="V1":
             migrate_energy+=tmp_v1_energy
@@ -131,14 +131,18 @@ def get_migration_opt_counters():
     global migrate_opt_latency
     return migrate_opt_shifts, migrate_opt_energy, migrate_opt_latency
 
-def next_access(next_reg, local_last_reg=None, add_to_global=True):
+def next_access(next_reg, local_last_reg=None, add_to_global=True, is_write=False):
     global last_reg
 
     if local_last_reg is None:
         local_last_reg=last_reg
+
+    v1scaler=1
+    if is_write:
+        v1scaler=num_access_ports
     
     #V1: horizontal allocation
-    tmp_v1_counter=int( (64/num_access_ports) -1 )*2
+    tmp_v1_counter=int( (64/num_access_ports) -1 )*2*v1scaler
     #V2 vertical allocation
     tmp_v2_counter= abs( int( (next_reg*64) / (racetrack_params.N*num_access_ports) )- int( (local_last_reg*64) / (racetrack_params.N*num_access_ports) ) )*racetrack_params.N
 
@@ -224,8 +228,8 @@ def get_total_energy():
     global v1_counter
     global v2_counter
 
-    total_v1_energy=rt_v1_energy+v1_counter*Es*num_access_ports
-    total_v2_energy=rt_v2_energy+v2_counter*Es*num_access_ports
+    total_v1_energy=rt_v1_energy+v1_counter*Es
+    total_v2_energy=rt_v2_energy+v2_counter*Es
 
     return total_v1_energy, total_v2_energy
 

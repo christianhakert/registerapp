@@ -184,11 +184,11 @@ for line in tracefile:
         if type_sr3==" integer" and sr3 < 32:
             racetrack.next_access(sr3)
         if type_dr1==" integer" and dr1 < 32:
-            racetrack.next_access(dr1)
+            racetrack.next_access(dr1, is_write=True)
         if type_dr2==" integer" and dr2 < 32:
-            racetrack.next_access(dr2)
+            racetrack.next_access(dr2, is_write=True)
         if type_dr3==" integer" and dr3 < 32:
-            racetrack.next_access(dr3)
+            racetrack.next_access(dr3, is_write=True)
 
         #process bit statistics
         if type_sr1==" integer" and sr1 < 32:
