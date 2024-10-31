@@ -71,13 +71,12 @@ def reset(migrate_from="V1",migrate_to="V2",migrate_opt_from="V1",migrate_opt_to
     migrate_opt_energy=0
     migrate_opt_latency=0
 
-    if migrate_from != migrate_to:
-
-        #simulate overhead for migration: reading old registers
-        prev_reg=0
-        for i in range(Numregs):
-            tmp_v1_counter,tmp_v2_counter=next_access(i,local_last_reg=prev_reg,add_to_global=False)
-            tmp_v1_energy,tmp_v2_energy,tmp_v1_latency,tmp_v2_latency=read_raceteack_reg(i,add_to_global=False)
+    #simulate overhead for migration: reading old registers
+    prev_reg=0
+    for i in range(Numregs):
+        tmp_v1_counter,tmp_v2_counter=next_access(i,local_last_reg=prev_reg,add_to_global=False)
+        tmp_v1_energy,tmp_v2_energy,tmp_v1_latency,tmp_v2_latency=read_raceteack_reg(i,add_to_global=False)
+        if migrate_from != migrate_to:
             if migrate_from=="V1":
                 migrate_energy+=tmp_v1_energy
                 migrate_latency+=tmp_v1_latency
@@ -86,6 +85,7 @@ def reset(migrate_from="V1",migrate_to="V2",migrate_opt_from="V1",migrate_opt_to
                 migrate_energy+=tmp_v2_energy
                 migrate_latency+=tmp_v2_latency
                 migrate_shifts+=tmp_v2_counter
+        if migrate_opt_from != migrate_opt_to:
             if migrate_opt_from=="V1":
                 migrate_opt_energy+=tmp_v1_energy
                 migrate_opt_latency+=tmp_v1_latency
@@ -95,13 +95,14 @@ def reset(migrate_from="V1",migrate_to="V2",migrate_opt_from="V1",migrate_opt_to
                 migrate_opt_latency+=tmp_v2_latency
                 migrate_opt_shifts+=tmp_v2_counter
 
-    if migrate_opt_from != migrate_opt_to:
+    
 
-        #simulate restore of registers
-        prev_reg=0
-        for i in range(Numregs):
-            tmp_v1_counter,tmp_v2_counter=next_access(i,local_last_reg=prev_reg,add_to_global=False, is_write=True)
-            tmp_v1_energy,tmp_v2_energy,tmp_v1_latency,tmp_v2_latency=write_raceteack_reg(i,old_value=0x00000000,new_value=0xFFFFFFFF,add_to_global=False)
+    #simulate restore of registers
+    prev_reg=0
+    for i in range(Numregs):
+        tmp_v1_counter,tmp_v2_counter=next_access(i,local_last_reg=prev_reg,add_to_global=False, is_write=True)
+        tmp_v1_energy,tmp_v2_energy,tmp_v1_latency,tmp_v2_latency=write_raceteack_reg(i,old_value=0x00000000,new_value=0xFFFFFFFF,add_to_global=False)
+        if migrate_from != migrate_to:
             if migrate_to=="V1":
                 migrate_energy+=tmp_v1_energy
                 migrate_latency+=tmp_v1_latency
@@ -110,6 +111,7 @@ def reset(migrate_from="V1",migrate_to="V2",migrate_opt_from="V1",migrate_opt_to
                 migrate_energy+=tmp_v2_energy
                 migrate_latency+=tmp_v2_latency
                 migrate_shifts+=tmp_v2_counter
+        if migrate_opt_from != migrate_opt_to:
             if migrate_opt_to=="V1":
                 migrate_opt_energy+=tmp_v1_energy
                 migrate_opt_latency+=tmp_v1_latency
