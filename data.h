@@ -1,8 +1,8 @@
-#include <stdio.h>
-#include <stdint.h>
 
 #define TUPLE_COUNT 1000
 #define ATTRIBUTE_COUNT 20
+
+typedef unsigned long uint64_t;
 
 uint64_t tuples[TUPLE_COUNT][ATTRIBUTE_COUNT] = {
     {43, 18, 56, 81, 43, 56, 90, 68, 19, 47, 71, 2, 3, 97, 32, 84, 30, 72, 84, 20},
