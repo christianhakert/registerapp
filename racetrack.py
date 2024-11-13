@@ -28,8 +28,8 @@ Es=20
 Ed=2
 Ei=200
 Er=20
-Regwidth=32
-Numregs=64
+Regwidth=64
+Numregs=32
 
 Ls=0.5
 Ld=0.1
@@ -148,9 +148,9 @@ def next_access(next_reg, local_last_reg=None, add_to_global=True, is_write=Fals
         v1scaler=num_access_ports
     
     #V1: horizontal allocation
-    tmp_v1_counter=int( (64/num_access_ports) -1 )*2*v1scaler
+    tmp_v1_counter=int( (racetrack_params.W/num_access_ports) -1 )*2*v1scaler*max(1,int(Regwidth/racetrack_params.W))
     #V2 vertical allocation
-    tmp_v2_counter= abs( int( (next_reg*64) / (racetrack_params.N*num_access_ports) )- int( (local_last_reg*64) / (racetrack_params.N*num_access_ports) ) )*racetrack_params.N
+    tmp_v2_counter= abs( int( (next_reg*Regwidth) / (racetrack_params.N*num_access_ports) )- int( (local_last_reg*Regwidth) / (racetrack_params.N*num_access_ports) ) )*racetrack_params.N
 
     if add_to_global:
         global v1_counter
