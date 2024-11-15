@@ -5,6 +5,7 @@ execution_window=racetrack_params.execution_window
 last_reg=0
 
 v1_counter=0
+v1_en_sh_counter=0
 v2_counter=0
 
 rt_v1_energy=0
@@ -40,8 +41,10 @@ def reset(migrate_from="V1",migrate_to="V2",migrate_opt_from="V1",migrate_opt_to
     global last_reg
     last_reg=0
     global v1_counter
+    global v1_en_sh_counter
     global v2_counter
     v1_counter=0
+    v1_en_sh_counter
     v2_counter=0
 
     global rt_v1_energy
@@ -76,6 +79,12 @@ def reset(migrate_from="V1",migrate_to="V2",migrate_opt_from="V1",migrate_opt_to
     for i in range(Numregs):
         tmp_v1_counter,tmp_v2_counter=next_access(i,local_last_reg=prev_reg,add_to_global=False)
         tmp_v1_energy,tmp_v2_energy,tmp_v1_latency,tmp_v2_latency=read_raceteack_reg(i,add_to_global=False)
+
+        tmp_v1_energy += tmp_v1_counter*Es
+        tmp_v1_latency += tmp_v1_counter*Ls
+        tmp_v2_energy += tmp_v2_counter*Es
+        tmp_v2_latency += tmp_v2_counter*Ls
+        
         if migrate_from != migrate_to:
             if migrate_from=="V1":
                 migrate_energy+=tmp_v1_energy
@@ -102,6 +111,12 @@ def reset(migrate_from="V1",migrate_to="V2",migrate_opt_from="V1",migrate_opt_to
     for i in range(Numregs):
         tmp_v1_counter,tmp_v2_counter=next_access(i,local_last_reg=prev_reg,add_to_global=False, is_write=True)
         tmp_v1_energy,tmp_v2_energy,tmp_v1_latency,tmp_v2_latency=write_raceteack_reg(i,old_value=0x00000000,new_value=0xFFFFFFFF,add_to_global=False)
+
+        tmp_v1_energy += tmp_v1_counter*Es*num_access_ports * min(1,(Regwidth/racetrack_params.W))
+        tmp_v1_latency += tmp_v1_counter*Ls
+        tmp_v2_energy += tmp_v2_counter*Es
+        tmp_v2_latency += tmp_v2_counter*Ls
+
         if migrate_from != migrate_to:
             if migrate_to=="V1":
                 migrate_energy+=tmp_v1_energy
@@ -142,13 +157,9 @@ def next_access(next_reg, local_last_reg=None, add_to_global=True, is_write=Fals
 
     if local_last_reg is None:
         local_last_reg=last_reg
-
-    v1scaler=1
-    if is_write:
-        v1scaler=num_access_ports
     
     #V1: horizontal allocation
-    tmp_v1_counter=int( (racetrack_params.W/num_access_ports) -1 )*2*v1scaler*max(1,int(Regwidth/racetrack_params.W))
+    tmp_v1_counter=int( (racetrack_params.W/num_access_ports) -1 )*2*max(1,int(Regwidth/racetrack_params.W))
     #V2 vertical allocation
     tmp_v2_counter= abs( int( (next_reg*Regwidth) / (racetrack_params.N*num_access_ports) )- int( (local_last_reg*Regwidth) / (racetrack_params.N*num_access_ports) ) )*racetrack_params.N
 
@@ -159,6 +170,12 @@ def next_access(next_reg, local_last_reg=None, add_to_global=True, is_write=Fals
         v2_counter+=tmp_v2_counter
 
         last_reg=next_reg
+
+        global v1_en_sh_counter
+        if is_write:
+            v1_en_sh_counter+= tmp_v1_counter* num_access_ports * min(1,(Regwidth/racetrack_params.W))
+        else:
+            v1_en_sh_counter+= tmp_v1_counter
 
     return tmp_v1_counter, tmp_v2_counter
 
@@ -231,10 +248,10 @@ def get_total_energy():
     global rt_v1_energy
     global rt_v2_energy
 
-    global v1_counter
+    global v1_en_sh_counter
     global v2_counter
 
-    total_v1_energy=rt_v1_energy+v1_counter*Es
+    total_v1_energy=rt_v1_energy+v1_en_sh_counter*Es
     total_v2_energy=rt_v2_energy+v2_counter*Es
 
     return total_v1_energy, total_v2_energy
